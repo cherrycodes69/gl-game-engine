@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <windows.h>		
-#include "Object3D.h"
+//#include "Object3D.h"
 #include "Camera.h"
 #include <math.h>
 #include <string>
@@ -16,32 +16,42 @@ HINSTANCE	hInstance;
 bool	ready=TRUE;		
 
 GLuint ballTX[4];
+GLuint wallTX[7];
+GLuint background[3];	
+GLuint monster[2];
+GLuint brick[1];
 
-	
-bool opaque=true;
-int numOfSpheres=500;
+int length(30),width(30),height(30);
+int npcHealth(5),playerHealth(100),projectileHealth(100);
+bool transparentSectors=true;
+int numOfCubes=0;
+int numOfNpc=0;
 int divisions=1;
-
+int period=60;
 
 
 
 GLuint	texture[3];
 vector<int> stats;
-TopContainer *bf;
+SuperSpace3D *bf;
 TextureCollection bal;
+TextureCollection wal;
+TextureCollection bak;
+TextureCollection mon;
+TextureCollection brik;
 GLUquadricObj *quadratic;	// Storage For Our Quadratic Objects ( NEW )
 
 GLfloat LightAmbient[]=		{ 0.0f, 0.0f, 0.0f, 1.0f };
 GLfloat LightDiffuse[]=		{ 1.0f, 1.0f, 1.0f, 1.0f };
-GLfloat LightPosition[]=	{20,20,20,opaque};
+GLfloat LightPosition[]=	{20,20,20,transparentSectors};
 
 GLuint	filter;
-Camera camera=Camera(Vector3D(0,0,0),Vector3D(0,0,-10),Vector3D(0,1,0),0.05);
+Camera camera;
 
 int InitGL(GLvoid);
 int DrawGLScene(GLvoid);
 void Keyboard_Input();
-void readtexture(char *loc,GLuint TexHandle);
+void readtexture(char *loc,GLuint& TexHandle,int type);
 GLvoid resize(GLsizei width, GLsizei height);
 BOOL startglwindow(char* title, int width, int height, int bits);
 GLvoid KillGLWindow(GLvoid);
@@ -54,11 +64,23 @@ int InitGL(GLvoid)
 {	
 	//read params
 	ifstream input;
+	string garbage;
 	input.open("params.txt",ios::in);
-	input>>numOfSpheres>>divisions>>opaque;
+	input	>>garbage>>length
+			>>garbage>>width
+			>>garbage>>height
+			>>garbage>>divisions
+			>>garbage>>numOfCubes
+			>>garbage>>numOfNpc
+			>>garbage>>npcHealth
+			>>garbage>>playerHealth
+			>>garbage>>projectileHealth
+			>>garbage>>period
+			>>garbage>>transparentSectors;
 	input.close();
-	LightPosition[3]=opaque;
-	bf=new TopContainer(divisions,40,40,40,!opaque);
+	LightPosition[3]=transparentSectors;
+	
+	
 
 	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
 	glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
@@ -75,7 +97,7 @@ int InitGL(GLvoid)
 
 	
 
-	if(opaque)
+	if(transparentSectors)
 		glEnable (GL_LIGHTING );
 	
 
@@ -88,78 +110,147 @@ int InitGL(GLvoid)
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //transperancy
 
 
-	glGenTextures(1,ballTX);
-	readtexture("3dtx.bmp",ballTX[0]);
-	bal=TextureCollection(ballTX,1,4);
-	
+	glGenTextures(6,wallTX);
+	readtexture("TX/wall1.bmp",wallTX[0],2);
+	wal=TextureCollection(wallTX[0]);
+	readtexture("TX/wall2.bmp",wallTX[1],2);
+	wal.addTX(wallTX[1]);
+	readtexture("TX/wall3.bmp",wallTX[2],2);
+	wal.addTX(wallTX[2]);
+	readtexture("TX/wall4.bmp",wallTX[3],2);
+	wal.addTX(wallTX[3]);
+	readtexture("TX/wall5.bmp",wallTX[4],2);
+	wal.addTX(wallTX[4]);
+	readtexture("TX/wall6.bmp",wallTX[5],2);
+	wal.addTX(wallTX[5]);
+
+
+	glGenTextures(3,ballTX);
+	readtexture("TX/ball1.bmp",ballTX[0],2);
+	bal=TextureCollection(ballTX[0]);
+	readtexture("TX/ball2.bmp",ballTX[1],2);
+	bal.addTX(ballTX[1]);
+	readtexture("TX/ball3.bmp",ballTX[2],2);
+	bal.addTX(ballTX[2]);
+
+	glGenTextures(2,background);
+	readtexture("TX/stars.bmp",background[0],2);
+	bak=TextureCollection(background[0]);
+	readtexture("TX/ground.bmp",background[1],2);
+	bak.addTX(background[1]);
+
+	glGenTextures(1,monster);
+	readtexture("TX/monster1.bmp",monster[0],2);
+	mon=TextureCollection(monster[0]);
+	readtexture("TX/monster2.bmp",monster[1],2);
+	mon.addTX(monster[1]);
+
+	glGenTextures(1,brick);
+	readtexture("TX/brick.bmp",brick[0],2);
+	brik=TextureCollection(brick[0]);
+
+	bf=new SuperSpace3D(divisions,Vector3D(length,height,width),bak,!transparentSectors);
+	camera=Camera(bf->center(),Vector3D(0,0,-10),Vector3D(0,1,0),0.1,bf,playerHealth);
 	srand(time(NULL));
 
-	
+	glBindTexture(GL_TEXTURE_2D,NULL);
 
 	return TRUE;
 }
 
 int DrawGLScene(GLvoid) 
 {
-	if(numOfSpheres>0){
-		bf->addObject(new Sphere3D(0.5,bf,bal,quadratic,rand()%5-2,rand()%5-2,rand()%5-2,rand()%30-15,rand()%30-15,rand()%30-15,rand()%20,0.2));//(float radius, Field* containingField,TextureCollection _TX ,int startingTX,float _dx,float _dy,float _x,float _y));
-		//bf->addObject(new Object3D(rand()%30-15,rand()%30-15,rand()%30-15,2,2,2));
-		numOfSpheres--;
+	unsigned int before=GetTickCount();
+
+	if(numOfCubes>0){
+		wal.nextTX();
+		//bf->addObject(new Object3D(rand()%(int)bf->dim.dx-((int)bf->dim.dx/2),rand()%(int)bf->dim.dy-((int)bf->dim.dy/2),rand()%(int)bf->dim.dz-((int)bf->dim.dz/2),2,2,2,wal));
+		bf->addObject(new Stackable(Vector3D(rand()%(int)bf->getDim().dx-((int)bf->getDim().dx/2),rand()%(int)bf->getDim().dy-((int)bf->getDim().dy/2),rand()%(int)bf->getDim().dz-((int)bf->getDim().dz/2)),Vector3D(1,1,1),brik));
+		numOfCubes--;
 	}
-	//bf->addObject(new Object3D(0,0,0,5,5,5));
+	if(numOfNpc>0 && !numOfCubes){
+		mon.nextTX();
+		bf->addObject(new NPC(Vector3D(rand()%(int)bf->getDim().dx-((int)bf->getDim().dx/2),rand()%(int)bf->getDim().dy-((int)bf->getDim().dy/2),rand()%(int)bf->getDim().dz-((int)bf->getDim().dz/2)),Vector3D(2,2,2),mon,camera.body,npcHealth,0.1));
+		numOfNpc--;
+	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
 	camera.refresh();
-
-	//int before=time(NULL); //statistics
-
 	bf->update();
 	bf->draw();
-	//Sleep(20);
-	//int after=time(NULL);
-	//stats.push_back(after-before);
-	
+
+	SYSTEMTIME  after;
+	GetSystemTime(&after);
+	while(GetTickCount()-before<period)
+	{
+		Sleep(period/7);
+
+	}
 	return TRUE; 
 }
-int keypressed=false;
+bool spacepressed=false;
+bool controlpressed=false;
+bool shiftpressed=false;
 void Keyboard_Input()
 {
-	if((GetKeyState(VK_UP) & 0x80))
+	if((GetKeyState('W') & 0x80))
 	{	
 		camera.go(1);
 	}
 
-	if((GetKeyState(VK_DOWN) & 0x80))
+	if((GetKeyState('S') & 0x80))
 	{
 		camera.go(-1);
 	}
 
-	if((GetKeyState(VK_LEFT) & 0x80))
+	if((GetKeyState('A') & 0x80))
 	{	
-		camera.rotate(-0.1);
+		//camera.rotate(-0.1);
+		camera.strafe(1);
 	}
 
-	if((GetKeyState(VK_RIGHT) & 0x80))
+	if((GetKeyState('D') & 0x80))
 	{
-		camera.rotate(0.1);
+		//camera.rotate(0.1);
+		camera.strafe(-1);
 	}
 
-	if((GetKeyState(VK_SPACE) & 0x80))
+	if((GetKeyState(VK_SPACE) & 0x80) && !spacepressed)
 	{
-		Vector3D ud=(camera.dir-camera.pos).normalize();
-		bf->addObject(new Sphere3D(0.5,bf,TextureCollection(ballTX,1,4),quadratic,ud.dx,ud.dy,ud.dz,camera.pos.dx+ud.dx,camera.pos.dy+ud.dy,camera.pos.dz+ud.dz,3,0.3));
+		spacepressed=true;
+		Vector3D ud=(camera.arm-camera.center()).normalize();
+  		bf->addObject(new Sphere3D(camera.center()+ud*2,ud,0.2,bf,bal,quadratic,3,0.4,projectileHealth));
+		
 	}
-	if((GetKeyState(VK_CONTROL) & 0x80))
-	{
-		Vector3D ud=(camera.dir-camera.pos).normalize();
-		bf->addObject(new Object3D(camera.pos.dx+ud.dx,camera.pos.dy+ud.dy,camera.pos.dz+ud.dz,2,2,2));
-	}
+	else if(!(GetKeyState(VK_SPACE) & 0x80))
+		spacepressed=false;
 
+	if((GetKeyState(VK_CONTROL) & 0x80) && !controlpressed)
+	{
+		bf->addObject(new Stackable(camera.arm,Vector3D(1,1,1),brik));
+		controlpressed=true;
+	}
+	else if(!(GetKeyState(VK_CONTROL) & 0x80))
+		controlpressed=false;
+
+	if((GetKeyState(VK_LSHIFT) & 0x80) && !shiftpressed)
+	{
+		camera.jump();
+		shiftpressed=true;
+	}
+	else if(!(GetKeyState(VK_LSHIFT) & 0x80))
+		shiftpressed=false;
+	if((GetKeyState('T') & 0x80) )
+		camera.drawArm();
+	if((GetKeyState(VK_UP) & 0x80) )
+		camera.lengthOfArm+=0.4;
+	if((GetKeyState(VK_DOWN) & 0x80) )
+		camera.lengthOfArm-=0.4;
 }
 
  
-void readtexture(char *loc,GLuint TexHandle) 								// Load Bitmaps And Convert To Textures
+void readtexture(char *loc,GLuint& TexHandle,int type) 								// Load Bitmaps And Convert To Textures
 {
 
 	AUX_RGBImageRec *TextureImage[1];					// Create Storage Space For The Texture
@@ -171,24 +262,26 @@ void readtexture(char *loc,GLuint TexHandle) 								// Load Bitmaps And Convert
 	{
 
 		glGenTextures(3, &texture[0]);					// Create Three Textures
-
-		// Create Nearest Filtered Texture
-		glBindTexture(GL_TEXTURE_2D, texture[0]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-
-		// Create Linear Filtered Texture
-		glBindTexture(GL_TEXTURE_2D, texture[1]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-
-		// Create MipMapped Texture
-		glBindTexture(GL_TEXTURE_2D, texture[2]);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
-		gluBuild2DMipmaps(GL_TEXTURE_2D, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+		if(type==0){
+			// Create Nearest Filtered Texture
+			glBindTexture(GL_TEXTURE_2D, TexHandle);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+			glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+		}else if (type==1){
+			// Create Linear Filtered Texture
+			glBindTexture(GL_TEXTURE_2D, TexHandle);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+		}else if (type==2){
+			// Create MipMapped Texture
+			glBindTexture(GL_TEXTURE_2D, TexHandle);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
+			gluBuild2DMipmaps(GL_TEXTURE_2D, 3, TextureImage[0]->sizeX, TextureImage[0]->sizeY, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+		}
+		//glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	if (TextureImage[0])								// If Texture Exists
@@ -306,13 +399,13 @@ GLvoid KillGLWindow(GLvoid)
 	//for(vector<int>::iterator it=stats.begin();it!=stats.end();++it)
 	//	sum+=*it;
 	//sum/=stats.size();
-	ofstream myfile;
-	myfile.open ("count.txt");
-	int sum=0;
-	for(int i=0;i<bf->sectors.size();i++)
-		sum+=bf->sectors[i].objects.size();
-	myfile << sum;
-	myfile.close();
+	//ofstream myfile;
+	//myfile.open ("count.txt");
+	//int sum=0;
+	//for(int i=0;i<bf->sectors.size();i++)
+	//	sum+=bf->sectors[i].objects.size();
+	//myfile << sum;
+	//myfile.close();
 	delete bf;
 
 	
@@ -342,7 +435,7 @@ int WINAPI WinMain(	HINSTANCE	hInstance,HINSTANCE	hPrevInstance,LPSTR	lpCmdLine,
 {
 	MSG		msg;									
 	BOOL	done=FALSE;								
-    startglwindow("3D Space Matrix",800,600,32);
+    startglwindow("AlienShooter",800,600,32);
 
 
 

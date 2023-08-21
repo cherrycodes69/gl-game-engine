@@ -23,6 +23,10 @@ class Vector3D
 		r.dx+=other.dx;r.dy+=other.dy;r.dz+=other.dz;
 		return r;}
 	Vector3D multiply(double f)const;
+	Vector3D cross(Vector3D o)const
+	{
+		return Vector3D(dy*o.dz-dz*o.dy,dz*o.dx-dx*o.dz,dx*o.dy-dy*o.dx);
+	}
 	Vector3D invert();
 	Vector3D normalize();
 

@@ -5,9 +5,13 @@ GL Game Engine is an archived open-source game engine. While it's not cutting-ed
 ## Features
 
 - Uses OpenGL for rendering.
-- **Entity-Component System**: For managing game objects and their behaviors.
-- **3D Collision & Bounce Behavior**: Allows for simulation of object interactions in a 3D space.
-- **Optimized Collision Checks**: Incorporates optimizations that divide the search space in 3D, enabling collision checks only within the vicinity of each object, reducing computational overhead.
+- **Entity-Component System**: Manages game objects and behaviors.
+- **3D Collision & Bounce**: Simulates object interactions in 3D.
+- **Collision Optimization**: Divides the search space in 3D to check collisions only nearby, reducing overhead.
+- **Projectiles**: Players can shoot projectiles.
+- **Building Blocks**: Players can stack blocks.
+- **Basic Enemy**: An enemy that simply follows or tracks the player.
+- **Player Health**: Players have a health metric, which, when depleted, can lead to game loss.
 
 ## Archive Information
 

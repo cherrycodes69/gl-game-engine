@@ -1,27 +1,22 @@
 #include "TextureCollection.h"
 
-TextureCollection::TextureCollection(GLuint *_textures,int _nTX,int _periodTX):nTX(_nTX),atTX(0),periodTX(_periodTX),requestedTX(0)
-{	
-	for(int i=0;i<nTX && nTX < MAX_TX;i++)
-		textures[i]=_textures[i];
 
-}
 
 GLuint TextureCollection::getTX()
 {
-	if(nTX==0)
+	if(textures.size()==0)
 		return 0;
-	requestedTX++;
-	if(requestedTX > periodTX)
+	requested++;
+	if(requested > period)
 	{
-	//	nextTX();
+		nextTX();
 	}
-	return textures[atTX];
+	return textures[at];
 }
 
 void TextureCollection::nextTX()
 {
-	atTX++;
-	atTX%=nTX;
-	requestedTX=0;
+	at++;
+	at%=textures.size();
+	requested=0;
 }

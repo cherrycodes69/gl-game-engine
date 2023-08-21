@@ -7,115 +7,194 @@
 #include <algorithm>
 #include <GLU.H>
 #include <list>
+#include <string.h>
 using namespace::std;
 
 
-class Container3D;
+class Space3D;
+class Player;
+class NPC;
 
 class Object3D
 {
-public:
+	friend bool operator==(const Object3D& a,const Object3D& b);
+	friend class Space3D;
+	friend class Sphere3D;
 
+	protected:
+	TextureCollection TX;
 	Vector3D pos;
 	Vector3D dim;
 	Vector3D dir;
-
-	GLfloat	xrot;				
-	GLfloat	yrot;				
+	static int idMod;
+	int id;
+	int health;		
+	//Space3D *super;
 	
-	Container3D *super;
 
 	double bindingRadius;
-	float speed;
+	double speed;
 	double gravity;
+	double default_gravity;
 
+	public:
+	vector<Space3D*> owners;
 	Object3D(){};
-	Object3D(double _x,double _y,double _z,double _l,double _h,double _d,GLfloat _xrot=0,GLfloat _yrot=0)
-		:pos(_x,_y,_z),dim(_l,_h,_d),xrot(_xrot),yrot(_yrot),dir(0,0,0),bindingRadius(_l/2),gravity(1),speed(0.1){dir.normalize();}
-	
+	Object3D(Vector3D _pos,Vector3D _dim,TextureCollection _TX);
 	virtual void update();
 	virtual void draw();
-	virtual void calculateNewDirection(Object3D& b);//make virtual for all objects
+	virtual void handleCollision(Object3D& b);
 	virtual Vector3D center(){return pos+(dim*0.5);}
 	virtual bool intersects(Object3D& o);
-
-
-	void handleCollisions();//move to all objects
-	void forceInBounds();//move to all objects
-	void stepForward();//move to all objects
-	void stepBack();//move to all objects
-	bool converging(Object3D& b);//move to all objects
-	void forceNegative(double &f);
-	void forcePositive(double &f);
+	virtual void actOn(Object3D& o){};
+	virtual bool dead(){return false;}
+	virtual void takeDamage(){};
+	virtual void moveCenterTo(Vector3D dst){pos=dst-dim*0.5;}
+	virtual bool converging(Object3D& b);
+	virtual bool onSolid();
+	void kill();
+	void checkHealth(){if(health<=0) kill();}
+    bool detectCollisions();//move to all objects
+	bool forceInBounds();
+	void stepForward(){pos=pos+(dir*speed);}
+	void stepBack(){pos=pos-(dir*speed);}
+	void forceNegative(double &f){if(f>0)	f*=-1;}
+	void forcePositive(double &f){if(f<0)	f*=-1;}
 	void applyGravity();
+	void forceOut(Object3D& b);
+	void forceOut(Player& b);
+	int signOf(double d){if(d<0)return -1;else{return 1;}}
+	Vector3D getDim(){return dim;}
+	Vector3D getPos(){return pos;}
+	Vector3D getDir(){return dir;}
+	void addOwner(Space3D* s){owners.push_back(s);}
+	list<Object3D*> getSignificantObjects();
+};
+class Stackable:public Object3D
+{
+	bool moveable;
 	
-	
+	public:
+	Stackable(){};
+	Stackable(Vector3D _pos,Vector3D _dim,TextureCollection _TX):Object3D(_pos,_dim,_TX),moveable(false){};
+	void update();
+	void handleCollision(Object3D& b);
+	bool onSolid();
 };
 
+class Space3D:public Object3D
+{
+	friend class Object3D;
+	friend class Stackable;
+	protected:
+	bool draw_borders;
+	list<Object3D*> objects;
+	
+	public:
+	Space3D(){};
+	Space3D(Vector3D _pos,Vector3D _dim,TextureCollection _TX,Space3D *_super, bool borders);
+	void addObject(Object3D* o);
+	void update();
+	void draw();
+	void drawBorders();
+	bool containsOriginOf(Object3D& o);
+	list<Object3D*>& getObjects(){return objects;}
+	~Space3D();
+
+	bool containsFully(Object3D& o){
+		Vector3D tmax=center()+dim*0.5;
+		Vector3D tmin=center()-dim*0.5;
+		Vector3D omax=o.center()+o.getDim()*0.5;
+		Vector3D omin=o.center()-o.getDim()*0.5;
+		if(omax>tmax || omin<tmin)
+			return true;
+		return false;
+	}
+	
+};
 
 class Sphere3D: public Object3D
 {
-
-	public:
-	TextureCollection TX;
+	protected:
+	GLfloat	xrot;				
+	GLfloat	yrot;	
 	GLUquadricObj *quadratic;
 	GLfloat r,g,b;
 	int rotspeed;
-
-	Sphere3D(){super=0;}
-	Sphere3D(double radius, Container3D* containingField,TextureCollection _TX ,GLUquadricObj *_quadratic,
-			 double _dx,double _dy,double _dz,double _x,double _y,double _z,int _rotspeed,double _speed=1);
 	
+	public:
+	Sphere3D(){}
+	Sphere3D(Vector3D _pos,Vector3D _dir,double radius, Space3D* containingField,TextureCollection _TX ,GLUquadricObj *_quadratic,int _rotspeed,double _speed,int _health);
 	void update();	
 	bool intersects(Object3D& b);
-
-	void calculateNewDirection(Object3D& b);
+	void handleCollision(Object3D& b);
 	void draw();
 	Vector3D center(){return pos;}
-
+	void actOn(Object3D& p);
+	void moveCenterTo(Vector3D dst){pos=dst;}
+	void takeDamage(){this->health--;checkHealth();};
+	bool dead(){return health<=0;}
 
 };
 
-
-
-class Container3D:public Object3D
+class SuperSpace3D:public Space3D
 {
-	public:
-	list<Object3D*> objects;
 
-	bool draw_borders;
-	Container3D(){};
-	Container3D(double _x,double _y,double _z,double _l,double _h,double _d,Container3D *_super=0, bool borders=false):Object3D(_x,_y,_z,_l,_h,_d){
-		super=_super;
-		draw_borders=borders;
-		
-	};
-	void addObject(Object3D* o);
-	
-
-	void update();//make virtual for all objects
-	void draw();//make virtual for all objects
-	void drawBorders();
-	bool containsOriginOf(const Object3D& o){
-		if(pos<o.pos && o.pos<pos+(dim)){return true;}return false;};
-	~Container3D();
-	//bool contains( Object3D& o){if( ( (o.center()+(o.dim*0.5)>center()-(dim*0.5)) && o.center()<center() ) || ( (o.center()-(o.dim*0.5)<center()+(dim*0.5)) && o.center()>center() ) )
-};
-class TopContainer:public Container3D
-{
-	public:
-	vector<Container3D> sectors;
+	protected:
+	vector<Space3D> sectors;
 	int n;
 	double lStep;
 	double hStep;
 	double dStep;
-	TopContainer(int _n,double l,double h, double d,bool db);
-	TopContainer(){};
-	
+
+	public:
+	SuperSpace3D(int _n,Vector3D _dim,TextureCollection _TX,bool db);
+	SuperSpace3D(){};
+	~SuperSpace3D(){
+	for(list<Object3D*>::iterator it=objects.begin();it!=objects.end();++it)
+		delete *it;
+	}
 	void update();//make virtual for all objects
-	Container3D& findSectorFor(Object3D& c);
+	void assignSectors(Object3D& c);
+	int getSectorIndex(Vector3D p);
 	void draw();//make virtual for all objects
 	
+
+};
+
+class Player: public Stackable
+{
+	friend class Camera;
+	
+	Vector3D arm;
+	bool move_requested;
+	bool show_arm;
+	
+	public:
+	Player(){};
+	Player(Vector3D _pos,Vector3D _dim,TextureCollection _TX,int _health);
+	void update();
+	void draw();
+	void takeDamage(){this->health--;checkHealth();};
+	bool dead(){return health<=0;}
+	void handleCollision(Object3D& b);
+	bool converging(Object3D& b){return true;}
+	
+	
+};
+
+class NPC:public Player
+{
+	Player* player;
+	
+	public:
+	NPC();
+	NPC(Vector3D _pos,Vector3D _dim,TextureCollection _TX,Player* _player,int _health,double _speed);
+	void update();
+	void draw(){Object3D::draw();}
+	void actOn(Object3D& p);
+	bool converging(Object3D& b){return Object3D::converging(b);}
+
 
 };
 
