@@ -7,6 +7,8 @@
 #include <string>
 #include <time.h>
 #include <fstream>
+#include <sstream>
+#include "ModelCollection.h"
 using namespace::std;
 
 HGLRC		rc=NULL;	
@@ -21,11 +23,11 @@ GLuint background[3];
 GLuint monster[2];
 GLuint brick[1];
 
-int length(30),width(30),height(30);
+int length(64),width(64),height(50);
 int npcHealth(5),playerHealth(100),projectileHealth(100);
 bool transparentSectors=true;
 int numOfCubes=0;
-int numOfNpc=0;
+int numOfNpc=-1;
 int divisions=1;
 int period=60;
 
@@ -33,7 +35,7 @@ int period=60;
 
 GLuint	texture[3];
 vector<int> stats;
-SuperSpace3D *bf;
+TopContainer *bf;
 TextureCollection bal;
 TextureCollection wal;
 TextureCollection bak;
@@ -51,14 +53,14 @@ Camera camera;
 int InitGL(GLvoid);
 int DrawGLScene(GLvoid);
 void Keyboard_Input();
-void readtexture(char *loc,GLuint& TexHandle,int type);
+GLuint readtexture(char *loc,GLuint& TexHandle,int type);
 GLvoid resize(GLsizei width, GLsizei height);
 BOOL startglwindow(char* title, int width, int height, int bits);
 GLvoid KillGLWindow(GLvoid);
 AUX_RGBImageRec *LoadBMP(char *Filename) ;
 int WINAPI WinMain(	HINSTANCE	hInstance,HINSTANCE	hPrevInstance,LPSTR	lpCmdLine,int nCmdShow);
 LRESULT	CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-
+ModelCollection npcmodels=ModelCollection();
 
 int InitGL(GLvoid)				
 {	
@@ -149,8 +151,33 @@ int InitGL(GLvoid)
 	readtexture("TX/brick.bmp",brick[0],2);
 	brik=TextureCollection(brick[0]);
 
-	bf=new SuperSpace3D(divisions,Vector3D(length,height,width),bak,!transparentSectors);
-	camera=Camera(bf->center(),Vector3D(0,0,-10),Vector3D(0,1,0),0.1,bf,playerHealth);
+	char *a;
+	for(int i=0;i<8;i++)
+	{
+		string s;
+		stringstream out;
+		out << "data/gargoyle/animation3/"<<i<<".ms3d";
+		s = out.str();
+		a=new char[s.size()+1];
+		a[s.size()]=0;
+		memcpy(a,s.c_str(),s.size());
+
+		npcmodels.addModel(a);
+		delete a;
+	}
+
+	Terrain *tr=new Terrain();
+	tr->pos.dy=-height/2;
+	tr->pos.dx=-length;
+	tr->pos.dz=-width;
+	tr->loadModel("data/terrain8080.ms3d");
+	//GLuint tst=readtexture("TX/ground.bmp",background[1],2);
+	//tr->TX.addTX(tst);
+	
+
+	bf=new TopContainer(divisions,length,height,width,bak,!transparentSectors);
+	bf->addObject(tr);
+	camera=Camera(bf->pos+Vector3D(bf->dim.dx*0.5,0.5,bf->dim.dz*0.5),Vector3D(0,0,-10),Vector3D(0,1,0),0.1,bf,playerHealth);
 	srand(time(NULL));
 
 	glBindTexture(GL_TEXTURE_2D,NULL);
@@ -164,13 +191,13 @@ int DrawGLScene(GLvoid)
 
 	if(numOfCubes>0){
 		wal.nextTX();
-		//bf->addObject(new Object3D(rand()%(int)bf->dim.dx-((int)bf->dim.dx/2),rand()%(int)bf->dim.dy-((int)bf->dim.dy/2),rand()%(int)bf->dim.dz-((int)bf->dim.dz/2),2,2,2,wal));
-		bf->addObject(new Stackable(Vector3D(rand()%(int)bf->getDim().dx-((int)bf->getDim().dx/2),rand()%(int)bf->getDim().dy-((int)bf->getDim().dy/2),rand()%(int)bf->getDim().dz-((int)bf->getDim().dz/2)),Vector3D(1,1,1),brik));
+		bf->addObject(new Object3D(rand()%(int)bf->dim.dx-((int)bf->dim.dx/2),rand()%(int)bf->dim.dy-((int)bf->dim.dy/2),rand()%(int)bf->dim.dz-((int)bf->dim.dz/2),2,2,2,wal));
+		//bf->addObject(new Stackable(rand()%(int)bf->dim.dx-((int)bf->dim.dx/2),rand()%(int)bf->dim.dy-((int)bf->dim.dy/2),rand()%(int)bf->dim.dz-((int)bf->dim.dz/2),2,2,2,wal));
 		numOfCubes--;
 	}
-	if(numOfNpc>0 && !numOfCubes){
+	if(numOfNpc>0){
 		mon.nextTX();
-		bf->addObject(new NPC(Vector3D(rand()%(int)bf->getDim().dx-((int)bf->getDim().dx/2),rand()%(int)bf->getDim().dy-((int)bf->getDim().dy/2),rand()%(int)bf->getDim().dz-((int)bf->getDim().dz/2)),Vector3D(2,2,2),mon,camera.body,npcHealth,0.1));
+		bf->addObject(new NPC(rand()%(int)bf->dim.dx-((int)bf->dim.dx/2),rand()%(int)bf->dim.dy-((int)bf->dim.dy/2),rand()%(int)bf->dim.dz-((int)bf->dim.dz/2),2,2,2,mon,camera.body,npcHealth,0.1,&npcmodels));
 		numOfNpc--;
 	}
 
@@ -220,7 +247,7 @@ void Keyboard_Input()
 	{
 		spacepressed=true;
 		Vector3D ud=(camera.arm-camera.center()).normalize();
-  		bf->addObject(new Sphere3D(camera.center()+ud*2,ud,0.2,bf,bal,quadratic,3,0.4,projectileHealth));
+  		bf->addObject(new Sphere3D(0.2,bf,bal,quadratic,ud.dx,ud.dy,ud.dz,camera.center().dx+ud.dx*1.5,camera.center().dy+ud.dy*1.5,camera.center().dz+ud.dz*1.5,3,0.4,projectileHealth));
 		
 	}
 	else if(!(GetKeyState(VK_SPACE) & 0x80))
@@ -228,7 +255,10 @@ void Keyboard_Input()
 
 	if((GetKeyState(VK_CONTROL) & 0x80) && !controlpressed)
 	{
-		bf->addObject(new Stackable(camera.arm,Vector3D(1,1,1),brik));
+		bf->addObject(new Stackable(camera.arm.dx,camera.arm.dy,camera.arm.dz,1,1,1,brik));
+		//ModelFactory
+
+		//bf->addObject();
 		controlpressed=true;
 	}
 	else if(!(GetKeyState(VK_CONTROL) & 0x80))
@@ -250,7 +280,7 @@ void Keyboard_Input()
 }
 
  
-void readtexture(char *loc,GLuint& TexHandle,int type) 								// Load Bitmaps And Convert To Textures
+GLuint readtexture(char *loc,GLuint& TexHandle,int type) 								// Load Bitmaps And Convert To Textures
 {
 
 	AUX_RGBImageRec *TextureImage[1];					// Create Storage Space For The Texture
@@ -293,7 +323,7 @@ void readtexture(char *loc,GLuint& TexHandle,int type) 								// Load Bitmaps A
 
 		free(TextureImage[0]);							// Free The Image Structure
 	}
-
+	return 0;//GLuint(TexHandle);
 									
 }
 
@@ -399,13 +429,13 @@ GLvoid KillGLWindow(GLvoid)
 	//for(vector<int>::iterator it=stats.begin();it!=stats.end();++it)
 	//	sum+=*it;
 	//sum/=stats.size();
-	//ofstream myfile;
-	//myfile.open ("count.txt");
-	//int sum=0;
-	//for(int i=0;i<bf->sectors.size();i++)
-	//	sum+=bf->sectors[i].objects.size();
-	//myfile << sum;
-	//myfile.close();
+	ofstream myfile;
+	myfile.open ("count.txt");
+	int sum=0;
+	for(int i=0;i<bf->sectors.size();i++)
+		sum+=bf->sectors[i].objects.size();
+	myfile << sum;
+	myfile.close();
 	delete bf;
 
 	
@@ -435,7 +465,7 @@ int WINAPI WinMain(	HINSTANCE	hInstance,HINSTANCE	hPrevInstance,LPSTR	lpCmdLine,
 {
 	MSG		msg;									
 	BOOL	done=FALSE;								
-    startglwindow("AlienShooter",800,600,32);
+    startglwindow("AlienShooter",1355,690,32);
 
 
 
@@ -456,7 +486,7 @@ int WINAPI WinMain(	HINSTANCE	hInstance,HINSTANCE	hPrevInstance,LPSTR	lpCmdLine,
 		else										
 		{
 				Keyboard_Input(); 
-				camera.goToMouse(800,600);
+				camera.goToMouse(1355,690);
 			if (ready)					
 			{
 					DrawGLScene();					

@@ -9,13 +9,13 @@ class Camera
 	Vector3D pos,arm,up;
 	double speed;
 	Player* body;
-	SuperSpace3D* aware;
+	TopContainer* aware;
 	double lengthOfArm;
 	Camera(){}
-	Camera(Vector3D _pos,Vector3D _dir,Vector3D _up,double _speed,SuperSpace3D* _aware,int _health)
+	Camera(Vector3D _pos,Vector3D _dir,Vector3D _up,double _speed,TopContainer* _aware,int _health)
 		:aware(_aware),pos(_pos),arm(_dir),up(_up),speed(_speed)
 	{
-		body=new Player(Vector3D(pos.dx,pos.dy-0.5,pos.dz),Vector3D(1,1,1),TextureCollection(),_health);
+		body=new Player(pos.dx,pos.dy-0.5,pos.dz,1,1,1,TextureCollection(),_health);
 		aware->addObject(body);
 		speed=body->speed;
 		lengthOfArm=5;
@@ -67,7 +67,6 @@ class Camera
 	void refresh()
 	{
 		pos=body->pos;
-		
 		body->arm=arm;
 
 		glLoadIdentity();

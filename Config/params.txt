@@ -1,11 +1,11 @@
-Length: 	40
-Width: 		40
+Length: 	80
+Width: 		80
 Height: 	40
-Divisions: 	3
-NumCubes: 	100
-NumNPCs: 	100
+Divisions: 	1
+NumCubes: 	0
+NumNPCs: 	1
 NPCHealth: 	5
-playerHealth: 	100
+playerHealth: 	500
 bulletHealth:	100
 updatePeriod:	20
 hideSectors: 	1

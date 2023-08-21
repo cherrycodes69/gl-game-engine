@@ -1,6 +1,6 @@
 #ifndef TEXTURECOLLECTION_H
 #define TEXTURECOLLECTION_H
-#include <GLAUX.H>
+#include <gl/GLAUX.H>
 #include <vector>
 using namespace::std;
 //const int MAX_TX=10;

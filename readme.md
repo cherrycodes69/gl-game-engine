@@ -12,6 +12,9 @@ GL Game Engine is an archived open-source game engine. While it's not cutting-ed
 - **Building Blocks**: Players can stack blocks.
 - **Basic Enemy**: An enemy that simply follows or tracks the player.
 - **Player Health**: Players have a health metric, which, when depleted, can lead to game loss.
+- **Loss Condition**: Players can lose the game under certain conditions.
+- **Animated 3D Models**: The game incorporates complex animated 3D models, enriching the visual experience.
+- **Heightmap Terrain**: The game environment features terrains generated from heightmaps, allowing for more realistic landscapes.
 
 ## Archive Information
 
