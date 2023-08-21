@@ -6,8 +6,8 @@ GL Game Engine is an archived open-source game engine. While it's not cutting-ed
 
 - Uses OpenGL for rendering.
 - **Entity-Component System**: For managing game objects and their behaviors.
-- **2D Collision & Bounce Behavior**: Allows for simulation of object interactions in a 2D space.
-- **Optimized Collision Checks**: Incorporates optimizations that divide the search space, enabling collision checks only within the vicinity of each object, reducing computational overhead.
+- **3D Collision & Bounce Behavior**: Allows for simulation of object interactions in a 3D space.
+- **Optimized Collision Checks**: Incorporates optimizations that divide the search space in 3D, enabling collision checks only within the vicinity of each object, reducing computational overhead.
 
 ## Archive Information
 

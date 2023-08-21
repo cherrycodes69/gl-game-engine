@@ -1,6 +1,6 @@
 #ifndef TEXTURECOLLECTION_H
 #define TEXTURECOLLECTION_H
-#include <gl\GLAUX.H>
+#include <GLAUX.H>
 
 const int MAX_TX=10;
 
